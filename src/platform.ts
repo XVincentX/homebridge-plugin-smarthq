@@ -4,7 +4,8 @@ import { SmartHQOven } from './platformAccessory';
 import getAccessToken from './getAccessToken';
 import axios from 'axios';
 import ws from 'ws';
-import { API_URL, ERD_CODES } from './constants';
+import { API_URL, ERD_CODES, KEEPALIVE_TIMEOUT } from './constants';
+import { access } from 'fs';
 
 /**
  * HomebridgePlatform
@@ -44,11 +45,6 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 		this.accessories.push(accessory);
 	}
 
-	/**
-	 * This is an example method showing how to register discovered accessories.
-	 * Accessories must only be registered once, previously created accessories
-	 * must not be registered again to prevent "duplicate UUID" errors.
-	 */
 	async discoverDevices() {
 		const token = await getAccessToken(this.config.username, this.config.password);
 		const wssData = await axios({
@@ -64,16 +60,27 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 		connection.on('message', (data) => {
 			const obj = JSON.parse(data.toString());
-      console.log(obj)
+			console.log(obj);
 
-      if (ERD_CODES[obj.item.erd]) {
-        console.log(ERD_CODES[obj.item.erd])
-      }
+			if (obj.kind === 'publish#erd') {
+				const accessory = this.accessories.filter((a) => a.context.device.applianceId === obj.item.applianceId);
+
+				if (!accessory) {
+					this.log.info('Device not found in my list. Maybe we should rerun this pluing?');
+					return;
+				}
+
+				if (ERD_CODES[obj.item.erd]) {
+					console.log(ERD_CODES[obj.item.erd]);
+					console.log(console.log(obj.item.value));
+				}
+			}
 		});
 
 		connection.on('error', (err) => {
 			console.log(err);
 		});
+
 		connection.on('close', (_, reason) => {
 			console.log('Connection closed');
 			console.log(reason.toString());
@@ -81,32 +88,39 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 		connection.on('open', () => {
 			connection.send(
-				JSON.stringify({ kind: 'websocket#subscribe', action: 'subscribe', resources: ['/appliance/*/erd/*'] }),
+				JSON.stringify({
+					kind: 'websocket#subscribe',
+					action: 'subscribe',
+					resources: ['/appliance/*/erd/*'],
+				}),
+			);
+
+			setInterval(
+				() =>
+					connection.send(
+						JSON.stringify({
+							kind: 'websocket#ping',
+							id: 'keepalive-ping',
+							action: 'ping',
+						}),
+					),
+				KEEPALIVE_TIMEOUT,
 			);
 		});
 
-		const devices = await axios({
-			method: 'GET',
-			baseURL: API_URL,
-			url: '/appliance',
-			headers: {
-				Authorization: `Bearer ${token.access_token}`,
-			},
-		});
+		axios.defaults.baseURL = API_URL;
+		axios.defaults.headers.common = {
+			Authorization: `Bearer ${token.access_token}`,
+		};
+
+		const devices = await axios.get('/appliance');
 
 		// loop over the discovered devices and register each one if it has not already been registered
 		for (const device of devices.data.items) {
-
-      const deviceDetailsRequest = await axios({
-        method: 'GET',
-        baseURL: API_URL,
-        url: `/appliance/${device.applianceId}`,
-        headers: {
-          Authorization: `Bearer ${token.access_token}`,
-        },
-      })
-
-      const deviceDetalils = deviceDetailsRequest.data
+			const [{ data: details }, { data: features }] = await Promise.all([
+				axios.get(`/appliance/${device.applianceId}`),
+				axios.get(`/appliance/${device.applianceId}/feature`),
+			]);
 			// generate a unique id for the accessory this should be generated from
 			// something globally unique, but constant, for example, the device serial
 			// number or MAC address
@@ -141,7 +155,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 				// store a copy of the device object in the `accessory.context`
 				// the `context` property can be used to store any data about the accessory you may need
-				accessory.context.device = deviceDetalils;
+				accessory.context = { device: { ...details, ...features }, axios };
 
 				// create the accessory handler for the newly create accessory
 				// this is imported from `platformAccessory.ts`

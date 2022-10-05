@@ -2,10 +2,11 @@ import { invert } from 'lodash';
 
 export const OAUTH2_CLIENT_ID = '564c31616c4f7474434b307435412b4d2f6e7672';
 export const OAUTH2_CLIENT_SECRET = '6476512b5246446d452f697154444941387052645938466e5671746e5847593d';
-export const OAUTH2_REDIRECT_URI = 'brillion.4e617a766474657344444e562b5935566e51324a=//oauth/redirect';
+export const OAUTH2_REDIRECT_URI = 'brillion.4e617a766474657344444e562b5935566e51324a://oauth/redirect';
 export const API_URL = 'https://api.brillion.geappliances.com/v1/';
+export const KEEPALIVE_TIMEOUT = 30 * 1000;
 
-export const ERD_CODES = invert({
+export const ERD_TYPES = {
 	APPLIANCE_TYPE: '0x0008',
 	CLOCK_FORMAT: '0x0006',
 	CLOCK_TIME: '0x0005',
@@ -337,4 +338,6 @@ export const ERD_CODES = invert({
 	CCM_IS_DESCALING: '0x9019',
 	CCM_START_DESCALING: '0x901a',
 	CCM_CANCEL_DESCALING: '0x901b',
-});
+};
+
+export const ERD_CODES = invert(ERD_TYPES);

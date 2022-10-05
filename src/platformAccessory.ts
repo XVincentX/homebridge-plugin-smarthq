@@ -23,12 +23,11 @@ export class ExamplePlatformAccessory {
     private readonly platform: SmartHQPlatform,
     private readonly accessory: PlatformAccessory,
   ) {
-
     // set accessory informatio
     this.accessory.getService(this.platform.Service.AccessoryInformation)!
       .setCharacteristic(this.platform.Characteristic.Manufacturer, accessory.context.device.brand)
-      .setCharacteristic(this.platform.Characteristic.Model, accessory.context.device.applianceId)
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.applianceId);
+      .setCharacteristic(this.platform.Characteristic.Model, accessory.context.device.model)
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessory.context.device.serial);
 
     // get the LightBulb service if it exists, otherwise create a new LightBulb service
     // you can create multiple services for each accessory

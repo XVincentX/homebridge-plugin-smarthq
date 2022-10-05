@@ -1,4 +1,4 @@
-import { PlatformAccessory } from 'homebridge';
+import type { PlatformAccessory } from 'homebridge';
 import { compact } from 'lodash';
 import { ERD_TYPES } from './constants';
 import { SmartHQPlatform } from './platform';

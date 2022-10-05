@@ -1,18 +1,10 @@
-import {
-	API,
-	DynamicPlatformPlugin,
-	Logger,
-	PlatformAccessory,
-	PlatformConfig,
-	Service,
-	Characteristic,
-} from 'homebridge';
+import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig } from 'homebridge';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { ExamplePlatformAccessory } from './platformAccessory';
 import getAccessToken from './getAccessToken';
 import axios from 'axios';
 import ws from 'ws';
-import { API_URL } from './constants';
+import { API_URL, ERD_CODES } from './constants';
 
 /**
  * HomebridgePlatform
@@ -70,14 +62,19 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 		const connection = new ws(wssData.data.endpoint);
 
-		connection.on('message', (data, binary) => {
+		connection.on('message', (data) => {
 			const obj = JSON.parse(data.toString());
+      console.log(obj)
+
+      if (ERD_CODES[obj.item.erd]) {
+        console.log(ERD_CODES[obj.item.erd])
+      }
 		});
 
 		connection.on('error', (err) => {
 			console.log(err);
 		});
-		connection.on('close', (code, reason) => {
+		connection.on('close', (_, reason) => {
 			console.log('Connection closed');
 			console.log(reason.toString());
 		});
@@ -88,7 +85,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 			);
 		});
 
-    const devices = await axios({
+		const devices = await axios({
 			method: 'GET',
 			baseURL: API_URL,
 			url: '/appliance',
@@ -99,6 +96,17 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 		// loop over the discovered devices and register each one if it has not already been registered
 		for (const device of devices.data.items) {
+
+      const deviceDetailsRequest = await axios({
+        method: 'GET',
+        baseURL: API_URL,
+        url: `/appliance/${device.applianceId}`,
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+        },
+      })
+
+      const deviceDetalils = deviceDetailsRequest.data
 			// generate a unique id for the accessory this should be generated from
 			// something globally unique, but constant, for example, the device serial
 			// number or MAC address
@@ -133,7 +141,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 
 				// store a copy of the device object in the `accessory.context`
 				// the `context` property can be used to store any data about the accessory you may need
-				accessory.context.device = device;
+				accessory.context.device = deviceDetalils;
 
 				// create the accessory handler for the newly create accessory
 				// this is imported from `platformAccessory.ts`

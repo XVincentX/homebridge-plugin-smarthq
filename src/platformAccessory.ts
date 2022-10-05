@@ -1,13 +1,16 @@
 import { Service, PlatformAccessory } from 'homebridge';
 import { compact } from 'lodash';
 import { ERD_TYPES } from './constants';
-
 import { SmartHQPlatform } from './platform';
+import type { SmartHqContext } from './platform';
 
 export class SmartHQOven {
 	private services: Service[];
 
-	constructor(private readonly platform: SmartHQPlatform, private readonly accessory: PlatformAccessory) {
+	constructor(
+		private readonly platform: SmartHQPlatform,
+		private readonly accessory: PlatformAccessory<SmartHqContext>,
+	) {
 		this.accessory
 			.getService(this.platform.Service.AccessoryInformation)!
 			.setCharacteristic(this.platform.Characteristic.Manufacturer, accessory.context.device.brand)
@@ -41,11 +44,14 @@ export class SmartHQOven {
 									.then((r) => parseInt(r.data.value) !== 0),
 							)
 							.onSet((value) =>
-								accessory.context.axios.post(
-									`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`,
-									{ data: value },
-								),
+								accessory.context.axios
+									.post(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`, {
+										data: value,
+									})
+									.then((response) => response.data),
 							);
+
+						return service;
 				}
 			}),
 		);

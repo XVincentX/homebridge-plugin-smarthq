@@ -30,8 +30,11 @@ export class SmartHQOven {
 				switch (feature) {
 					case 'COOKING_V1_UPPER_OVEN_FOUNDATION':
 						const service =
-							this.accessory.getService(ERD_TYPES.UPPER_OVEN_LIGHT) ||
-							this.accessory.addService(this.platform.Service.Lightbulb, ERD_TYPES.UPPER_OVEN_LIGHT);
+							this.accessory.getService(`${accessory.context.device.nickname} Upper Oven Light`) ||
+							this.accessory.addService(
+								this.platform.Service.Lightbulb,
+								`${accessory.context.device.nickname} Upper Oven Light`,
+							);
 
 						service
 							.getCharacteristic(this.platform.Characteristic.On)

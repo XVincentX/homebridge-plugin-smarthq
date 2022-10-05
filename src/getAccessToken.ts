@@ -27,14 +27,7 @@ export default async function getAccessToken(username: string, password: string)
 		(t) => t.value,
 	);
 
-	const body = new URLSearchParams();
-
-	for (var key in carryInputs) {
-		body.append(key, carryInputs[key]);
-	}
-
-	body.set('username', username);
-	body.set('password', password);
+	const body = new URLSearchParams({ ...carryInputs, username, password });
 
 	const res = await aclient({
 		method: 'POST',
@@ -51,13 +44,13 @@ export default async function getAccessToken(username: string, password: string)
 	const u = new URL(res.headers.location);
 	const code = u.searchParams.get('code');
 
-	const data = new URLSearchParams();
-
-	data.set('code', code);
-	data.set('client_id', OAUTH2_CLIENT_ID);
-	data.set('client_secret', OAUTH2_CLIENT_SECRET);
-	data.set('redirect_uri', OAUTH2_REDIRECT_URI);
-	data.set('grant_type', 'authorization_code');
+	const data = new URLSearchParams({
+		code,
+		client_id: OAUTH2_CLIENT_ID,
+		client_secret: OAUTH2_CLIENT_SECRET,
+		redirect_uri: OAUTH2_REDIRECT_URI,
+		grant_type: 'authorization_code',
+	});
 
 	const r2 = await aclient({
 		url: client.issuer.metadata.token_endpoint,

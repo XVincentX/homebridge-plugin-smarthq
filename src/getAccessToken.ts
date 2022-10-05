@@ -23,8 +23,8 @@ export default async function getAccessToken(username: string, password: string)
 
 	const page = cheerio.load(htmlPageResponse.data);
 	const carryInputs = mapValues(
-		keyBy(page('#frmsignin').serializeArray(), (o) => o.name),
-		(t) => t.value,
+		keyBy(page('#frmsignin').serializeArray(), o => o.name),
+		t => t.value,
 	);
 
 	const body = new URLSearchParams({ ...carryInputs, username, password });

@@ -7,6 +7,7 @@ import ws from 'ws';
 import { API_URL, ERD_CODES, KEEPALIVE_TIMEOUT } from './constants';
 export type SmartHqContext = {
 	axios: typeof axios;
+	userId: string;
 	device: {
 		brand: string;
 		model: string;
@@ -60,12 +61,12 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 		const wssData = await axios.get('/websocket');
 		const connection = new ws(wssData.data.endpoint);
 
-		connection.on('message', (data) => {
+		connection.on('message', data => {
 			const obj = JSON.parse(data.toString());
 			console.log(obj);
 
 			if (obj.kind === 'publish#erd') {
-				const accessory = this.accessories.filter((a) => a.context.device.applianceId === obj.item.applianceId);
+				const accessory = this.accessories.filter(a => a.context.device.applianceId === obj.item.applianceId);
 
 				if (!accessory) {
 					this.log.info('Device not found in my list. Maybe we should rerun this pluing?');
@@ -79,7 +80,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 			}
 		});
 
-		connection.on('error', (err) => {
+		connection.on('error', err => {
 			console.log(err);
 		});
 
@@ -118,7 +119,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 				axios.get(`/appliance/${device.applianceId}/feature`),
 			]);
 			const uuid = this.api.hap.uuid.generate(device.jid);
-			const existingAccessory = this.accessories.find((accessory) => accessory.UUID === uuid);
+			const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
 
 			if (existingAccessory) {
 				// the accessory already exists
@@ -139,7 +140,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 			} else {
 				this.log.info('Adding new accessory:', device.nickname);
 				const accessory = new this.api.platformAccessory<SmartHqContext>(device.nickname, uuid);
-				accessory.context = { device: { ...details, ...features }, axios };
+				accessory.context = { device: { ...details, ...features }, axios, userId: device.data.userId };
 				new SmartHQOven(this, accessory);
 				this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
 			}

@@ -1,9 +1,8 @@
 {
-  "private": true,
-  "displayName": "Plugin Name",
+  "displayName": "Homebridge SmartHQ",
   "name": "homebridge-plugin-smarthq",
-  "version": "1.0.0",
-  "description": "A short description about what your plugin does.",
+  "version": "0.0.1",
+  "description": "Incomplete plugin for SmartHQ enabled appliances",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

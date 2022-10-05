@@ -1,5 +1,5 @@
 import { OAUTH2_CLIENT_ID, OAUTH2_CLIENT_SECRET, OAUTH2_REDIRECT_URI } from './constants';
-import { Issuer, TokenSet } from 'openid-client';
+import { Issuer } from 'openid-client';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { keyBy, mapValues } from 'lodash';

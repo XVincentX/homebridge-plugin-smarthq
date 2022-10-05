@@ -3,6 +3,7 @@ import { compact } from 'lodash';
 import { ERD_TYPES } from './constants';
 import { SmartHQPlatform } from './platform';
 import type { SmartHqContext } from './platform';
+import axios from 'axios';
 
 export class SmartHQOven {
 	constructor(
@@ -28,7 +29,7 @@ export class SmartHQOven {
 				]; */
 
 				switch (feature) {
-					case 'COOKING_V1_UPPER_OVEN_FOUNDATION':
+					case 'COOKING_V1_UPPER_OVEN_FOUNDATION': {
 						const service =
 							this.accessory.getService('Upper Oven Light') ||
 							this.accessory.addService(this.platform.Service.Lightbulb, 'Upper Oven Light');
@@ -36,12 +37,12 @@ export class SmartHQOven {
 						service
 							.getCharacteristic(this.platform.Characteristic.On)
 							.onGet(() =>
-								accessory.context.axios
+								axios
 									.get(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`)
 									.then(r => parseInt(r.data.value) !== 0),
 							)
 							.onSet(value =>
-								accessory.context.axios
+								axios
 									.post(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`, {
 										kind: 'appliance#erdListEntry',
 										userId: accessory.context.userId,
@@ -53,6 +54,7 @@ export class SmartHQOven {
 							);
 
 						return service;
+					}
 				}
 			}),
 		);

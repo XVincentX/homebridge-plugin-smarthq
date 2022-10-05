@@ -1,12 +1,16 @@
 import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig } from 'homebridge';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { SmartHQOven } from './platformAccessory';
-import getAccessToken from './getAccessToken';
+import getAccessToken, { refreshAccessToken } from './getAccessToken';
 import axios from 'axios';
 import ws from 'ws';
-import { API_URL, ERD_CODES, KEEPALIVE_TIMEOUT } from './constants';
+import { API_URL, ERD_CODES, ERD_TYPES, KEEPALIVE_TIMEOUT } from './constants';
+import { find } from 'lodash';
+import { TokenSet } from 'openid-client';
+
+axios.defaults.baseURL = API_URL;
+
 export type SmartHqContext = {
-	axios: typeof axios;
 	userId: string;
 	device: {
 		brand: string;
@@ -20,6 +24,7 @@ export type SmartHqContext = {
 export class SmartHQPlatform implements DynamicPlatformPlugin {
 	public Service: typeof this.api.hap.Service;
 	public Characteristic: typeof this.api.hap.Characteristic;
+	private tokenSet: TokenSet;
 
 	public readonly accessories: PlatformAccessory<SmartHqContext>[] = [];
 
@@ -39,23 +44,28 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 		this.accessories.push(accessory);
 	}
 
-	async discoverDevices() {
-		const token = await getAccessToken(this.config.username, this.config.password);
-
-		axios.defaults.baseURL = API_URL;
+	async startRefreshTokenLogic() {
+		this.tokenSet = await refreshAccessToken(this.tokenSet.refresh_token);
 		axios.defaults.headers.common = {
-			Authorization: `Bearer ${token.access_token}`,
+			Authorization: `Bearer ${this.tokenSet.access_token}`,
 		};
+
+		setTimeout(this.startRefreshTokenLogic, 1000 * (this.tokenSet.expires_in - 2000));
+	}
+
+	async discoverDevices() {
+		this.tokenSet = await getAccessToken(this.config.username, this.config.password);
+		await this.startRefreshTokenLogic();
 
 		const wssData = await axios.get('/websocket');
 		const connection = new ws(wssData.data.endpoint);
 
 		connection.on('message', data => {
 			const obj = JSON.parse(data.toString());
-			console.log(obj);
+			this.log.debug(obj);
 
 			if (obj.kind === 'publish#erd') {
-				const accessory = this.accessories.filter(a => a.context.device.applianceId === obj.item.applianceId);
+				const accessory = find(this.accessories, a => a.context.device.applianceId === obj.item.applianceId);
 
 				if (!accessory) {
 					this.log.info('Device not found in my list. Maybe we should rerun this pluing?');
@@ -63,19 +73,21 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 				}
 
 				if (ERD_CODES[obj.item.erd]) {
-					console.log(ERD_CODES[obj.item.erd]);
-					console.log(console.log(obj.item.value));
+					this.log.debug(ERD_CODES[obj.item.erd]);
+					this.log.debug(obj.item.value);
+
+					if (obj.item.erd === ERD_TYPES.UPPER_OVEN_LIGHT) {
+						accessory
+							.getService('Upper Oven Light')
+							.updateCharacteristic(this.Characteristic.On, obj.item.value === '01');
+					}
 				}
 			}
 		});
 
-		connection.on('error', err => {
-			console.log(err);
-		});
-
 		connection.on('close', (_, reason) => {
-			console.log('Connection closed');
-			console.log(reason.toString());
+			this.log.debug('Connection closed');
+			this.log.debug(reason.toString());
 		});
 
 		connection.on('open', () => {
@@ -129,7 +141,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 			} else {
 				this.log.info('Adding new accessory:', device.nickname);
 				const accessory = new this.api.platformAccessory<SmartHqContext>(device.nickname, uuid);
-				accessory.context = { device: { ...details, ...features }, axios, userId: devices.data.userId };
+				accessory.context = { device: { ...details, ...features }, userId: devices.data.userId };
 				new SmartHQOven(this, accessory);
 				this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
 			}

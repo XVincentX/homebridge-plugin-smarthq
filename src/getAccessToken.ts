@@ -45,6 +45,7 @@ export default async function getAccessToken(username: string, password: string)
 		url: 'https://accounts.brillion.geappliances.com/oauth2/g_authenticate',
 		data: body,
 		maxRedirects: 0,
+		validateStatus: () => true,
 	});
 
 	const u = new URL(res.headers.location);

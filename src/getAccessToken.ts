@@ -1,19 +1,27 @@
 import { OAUTH2_CLIENT_ID, OAUTH2_CLIENT_SECRET, OAUTH2_REDIRECT_URI } from './constants';
-import { Issuer } from 'openid-client';
+import { Issuer, TokenSet } from 'openid-client';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { keyBy, mapValues } from 'lodash';
 import { wrapper } from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
 
-export default async function getAccessToken(username: string, password: string) {
-	const geData = await Issuer.discover('https://accounts.brillion.geappliances.com/');
+const oidcClient = Issuer.discover('https://accounts.brillion.geappliances.com/').then(
+	geData =>
+		new geData.Client({
+			client_id: OAUTH2_CLIENT_ID,
+			client_secret: OAUTH2_CLIENT_SECRET,
+			response_types: ['code'],
+		}),
+);
 
-	const client = new geData.Client({
-		client_id: OAUTH2_CLIENT_ID,
-		client_secret: OAUTH2_CLIENT_SECRET,
-		response_types: ['code'],
-	});
+export async function refreshAccessToken(refresh_token: string) {
+	const client = await oidcClient;
+	return client.grant({ refresh_token, grant_type: 'refresh_token' });
+}
+
+export default async function getAccessToken(username: string, password: string) {
+	const client = await oidcClient;
 
 	const oauthUrl = client.authorizationUrl();
 
@@ -41,29 +49,6 @@ export default async function getAccessToken(username: string, password: string)
 		validateStatus: () => true,
 	});
 
-	const u = new URL(res.headers.location);
-	const code = u.searchParams.get('code');
-
-	const data = new URLSearchParams({
-		code,
-		client_id: OAUTH2_CLIENT_ID,
-		client_secret: OAUTH2_CLIENT_SECRET,
-		redirect_uri: OAUTH2_REDIRECT_URI,
-		grant_type: 'authorization_code',
-	});
-
-	const r2 = await aclient({
-		url: client.issuer.metadata.token_endpoint,
-		method: 'POST',
-		auth: {
-			password: OAUTH2_CLIENT_SECRET,
-			username: OAUTH2_CLIENT_ID,
-		},
-		headers: {
-			'content-type': 'application/x-www-form-urlencoded',
-		},
-		data,
-	});
-
-	return r2.data;
+	const code = new URL(res.headers.location).searchParams.get('code');
+	return client.grant({ grant_type: 'authorization_code', code, redirect_uri: OAUTH2_REDIRECT_URI });
 }

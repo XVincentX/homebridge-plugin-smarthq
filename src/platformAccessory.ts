@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory } from 'homebridge';
+import { PlatformAccessory } from 'homebridge';
 import { compact } from 'lodash';
 import { ERD_TYPES } from './constants';
 import { SmartHQPlatform } from './platform';
@@ -41,18 +41,15 @@ export class SmartHQOven {
 									.then(r => parseInt(r.data.value) !== 0),
 							)
 							.onSet(value =>
-								accessory.context.axios.post(
-									`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`,
-									{
-										data: {
-											kind: 'appliance#erdListEntry',
-											userId: accessory.context.userId,
-											applianceId: accessory.context.device.applianceId,
-											erd: ERD_TYPES.UPPER_OVEN_LIGHT,
-											value: value ? '01' : '00',
-										},
-									},
-								),
+								accessory.context.axios
+									.post(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`, {
+										kind: 'appliance#erdListEntry',
+										userId: accessory.context.userId,
+										applianceId: accessory.context.device.applianceId,
+										erd: ERD_TYPES.UPPER_OVEN_LIGHT,
+										value: value ? '01' : '00',
+									})
+									.then(() => undefined),
 							);
 
 						return service;

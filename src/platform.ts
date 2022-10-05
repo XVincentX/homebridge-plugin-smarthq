@@ -21,32 +21,21 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 	public Service: typeof this.api.hap.Service;
 	public Characteristic: typeof this.api.hap.Characteristic;
 
-	// this is used to track restored cached accessories
 	public readonly accessories: PlatformAccessory<SmartHqContext>[] = [];
 
 	constructor(public readonly log: Logger, public readonly config: PlatformConfig, public readonly api: API) {
 		this.Service = this.api.hap.Service;
 		this.Characteristic = this.api.hap.Characteristic;
 		this.log.debug('Finished initializing platform:', this.config.name);
-		// When this event is fired it means Homebridge has restored all cached accessories from disk.
-		// Dynamic Platform plugins should only register new accessories after this event was fired,
-		// in order to ensure they weren't added to homebridge already. This event can also be used
-		// to start discovery of new accessories.
 		this.api.on('didFinishLaunching', () => {
 			log.debug('Executed didFinishLaunching callback');
-			// run the method to discover / register your devices as accessories
+
 			this.discoverDevices();
 		});
 	}
 
-	/**
-	 * This function is invoked when homebridge restores cached accessories from disk at startup.
-	 * It should be used to setup event handlers for characteristics and update respective values.
-	 */
 	configureAccessory(accessory: PlatformAccessory<SmartHqContext>) {
 		this.log.info('Loading accessory from cache:', accessory.displayName);
-
-		// add the restored accessory to the accessories cache so we can track if it has already been registered
 		this.accessories.push(accessory);
 	}
 
@@ -140,7 +129,7 @@ export class SmartHQPlatform implements DynamicPlatformPlugin {
 			} else {
 				this.log.info('Adding new accessory:', device.nickname);
 				const accessory = new this.api.platformAccessory<SmartHqContext>(device.nickname, uuid);
-				accessory.context = { device: { ...details, ...features }, axios, userId: device.data.userId };
+				accessory.context = { device: { ...details, ...features }, axios, userId: devices.data.userId };
 				new SmartHQOven(this, accessory);
 				this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
 			}

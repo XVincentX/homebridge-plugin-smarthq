@@ -30,33 +30,46 @@ export class SmartHQOven {
 
 				switch (feature) {
 					case 'COOKING_V1_UPPER_OVEN_FOUNDATION': {
-						const service =
+						const ovenLight =
 							this.accessory.getService('Upper Oven Light') ||
-							this.accessory.addService(this.platform.Service.Lightbulb, 'Upper Oven Light');
+							this.accessory.addService(this.platform.Service.Lightbulb, 'Upper Oven Light', 'Oven');
 
-						service
+						ovenLight
 							.getCharacteristic(this.platform.Characteristic.On)
 							.onGet(() =>
 								axios
 									.get(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`)
 									.then(r => parseInt(r.data.value) !== 0),
 							)
-							.onSet(value =>
+							.onSet((value: boolean) =>
 								axios
-									.post(`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`, {
-										kind: 'appliance#erdListEntry',
-										userId: accessory.context.userId,
-										applianceId: accessory.context.device.applianceId,
-										erd: ERD_TYPES.UPPER_OVEN_LIGHT,
-										value: value ? '01' : '00',
-									})
+									.post(
+										`/appliance/${accessory.context.device.applianceId}/erd/${ERD_TYPES.UPPER_OVEN_LIGHT}`,
+										this.erdPayload(ERD_TYPES.UPPER_OVEN_LIGHT, value),
+									)
 									.then(() => undefined),
 							);
 
-						return service;
+						return ovenLight;
+					}
+
+					case 'COOKING_V1_ACCENT_LIGHTING': {
+						const service =
+							this.accessory.getService('Accent Light') ||
+							this.accessory.addService(this.platform.Service.Lightbulb, 'Accent Light', 'Stove');
 					}
 				}
 			}),
 		);
+	}
+
+	erdPayload(erd: string, value: string | boolean) {
+		return {
+			kind: 'appliance#erdListEntry',
+			userId: this.accessory.context.userId,
+			applianceId: this.accessory.context.device.applianceId,
+			erd,
+			value: typeof value === 'boolean' ? (value ? '01' : '00') : value,
+		};
 	}
 }

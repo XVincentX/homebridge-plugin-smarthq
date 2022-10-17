@@ -36,11 +36,12 @@ export class SmartHQOven {
 						.getCharacteristic(this.platform.Characteristic.On)
 						.onGet(() => this.readErd(ERD_TYPES.UPPER_OVEN_LIGHT).then(r => parseInt(r) !== 0))
 						.onSet((value: boolean) => this.writeErd(ERD_TYPES.UPPER_OVEN_LIGHT, value));
+					return
 
-					const ovenThermostat =
-						this.accessory.getService('Upper Oven Thermostat') ||
+					const ovenMode =
+						this.accessory.getService('Upper Oven Mode') ||
 						this.accessory
-							.addService(this.platform.Service.Thermostat, 'Upper Oven Thermostat', 'Oven')
+							.addService(this.platform.Service.StatefulProgrammableSwitch, 'Upper Oven Mode', 'Oven')
 							.getCharacteristic(this.platform.Characteristic.TargetTemperature)
 							.onGet(async () => {
 								const erdVal = await this.readErd(ERD_TYPES.UPPER_OVEN_COOK_MODE);
@@ -60,6 +61,7 @@ export class SmartHQOven {
 				}
 
 				case 'COOKING_V1_ACCENT_LIGHTING': {
+					return
 					const service =
 						this.accessory.getService('Accent Light') ||
 						this.accessory.addService(this.platform.Service.Lightbulb, 'Accent Light', 'Stove');
